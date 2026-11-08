@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriPath — Daily Plate Check</title>
+<style>
+  :root{--ink:#18352d;--muted:#71827b;--green:#26745b;--green2:#dff3e8;--lime:#d8f06a;--cream:#f7f8f2;--white:#fff;--line:#e5ebe4;--orange:#f4a261;--shadow:0 24px 70px rgba(24,53,45,.10)}
+  *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  button,input{font:inherit} button{cursor:pointer}
+  .app{min-height:100vh;overflow:hidden;position:relative}
+  .ambient{position:fixed;z-index:0;pointer-events:none;border-radius:50%;filter:blur(1px);opacity:.55}
+  .ambient.a{width:360px;height:360px;background:#e1f1ce;top:-180px;right:-90px}
+  .ambient.b{width:260px;height:260px;background:#fbe5d2;bottom:-130px;left:-110px}
+  header,.main,footer{position:relative;z-index:1}
+  header{height:82px;display:flex;align-items:center;justify-content:space-between;max-width:1240px;margin:auto;padding:0 30px}
+  .brand{display:flex;gap:11px;align-items:center;font-weight:850;letter-spacing:-.7px;font-size:21px}
+  .brand-mark{width:37px;height:37px;background:var(--green);color:white;border-radius:13px;display:grid;place-items:center;box-shadow:0 7px 18px #26745b35}
+  .brand-mark svg{width:23px;height:23px}
+  .header-note{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:750}
+  .main{max-width:1240px;margin:auto;padding:20px 30px 55px}
+  .progress-wrap{max-width:780px;margin:0 auto 28px}
+  .progress-meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:750;color:var(--muted);margin-bottom:10px}
+  .progress-meta span:last-child{color:var(--green)}
+  .progress-track{height:5px;background:#e7ece4;border-radius:9px;overflow:hidden}
+  .progress-fill{height:100%;width:20%;background:var(--green);border-radius:9px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+  .screen{display:none;animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+  .screen.active{display:block}
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .intro{text-align:center;max-width:750px;margin:0 auto 30px}
+  .eyebrow{display:inline-flex;align-items:center;gap:7px;background:var(--green2);color:var(--green);border-radius:30px;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.11em;font-weight:850;margin-bottom:17px}
+  .eyebrow i{display:block;width:6px;height:6px;border-radius:50%;background:var(--green)}
+  h1{font-size:clamp(34px,5vw,58px);line-height:1.02;letter-spacing:-2.6px;margin:0 auto 15px;font-weight:850}
+  h1 .accent{color:var(--green)}
+  .sub{color:var(--muted);font-size:15px;line-height:1.7;margin:0 auto;max-width:590px}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.78fr);gap:22px;max-width:940px;margin:0 auto}
+  .panel{background:rgba(255,255,255,.88);border:1px solid #e8ede6;border-radius:26px;padding:30px;box-shadow:var(--shadow)}
+  .panel-title{font-size:18px;letter-spacing:-.5px;font-weight:800;margin:0 0 5px}
+  .panel-sub{color:var(--muted);font-size:13px;line-height:1.55;margin:0 0 24px}
+  .field{margin-bottom:18px}
+  .field label{display:block;font-size:12px;font-weight:800;margin-bottom:8px}
+  .field input{width:100%;padding:14px 15px;border:1px solid #dfe7df;border-radius:13px;background:#fbfcf9;color:var(--ink);outline:none;transition:border .2s,box-shadow .2s}
+  .field input:focus{border-color:var(--green);box-shadow:0 0 0 4px #26745b15}
+  .input-hint{font-size:11px;color:var(--muted);margin-top:7px}
+  .btn{border:0;border-radius:14px;padding:14px 19px;display:inline-flex;justify-content:center;align-items:center;gap:10px;font-weight:800;font-size:13px;transition:transform .2s,box-shadow .2s,background .2s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn-primary{background:var(--green);color:white;box-shadow:0 10px 22px #26745b2a}
+  .btn-primary:hover{background:#1d624b;box-shadow:0 14px 28px #26745b38}
+  .btn-light{background:#f0f4ed;color:var(--ink)}
+  .btn-full{width:100%;margin-top:4px}
+  .side-card{background:var(--green);border-radius:26px;padding:27px;color:white;min-height:100%;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative}
+  .side-card:after{content:"";position:absolute;width:240px;height:240px;border:1px solid #ffffff26;border-radius:50%;right:-95px;top:90px;box-shadow:0 0 0 25px #ffffff08,0 0 0 50px #ffffff05}
+  .side-kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#cce8d9;font-weight:800}
+  .side-card h2{font-size:31px;line-height:1.08;letter-spacing:-1.2px;margin:15px 0}
+  .side-card p{color:#d2e6dc;font-size:13px;line-height:1.7;max-width:260px}
+  .plate-art{font-size:100px;text-align:center;filter:drop-shadow(0 15px 16px #0e392d40);transform:rotate(-8deg);margin:15px 0 8px}
+  .side-foot{display:flex;gap:9px;align-items:center;font-size:11px;color:#d6e9df}
+  .tiny-dot{width:8px;height:8px;background:var(--lime);border-radius:50%}
+  .meal-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;max-width:1060px;margin:0 auto 23px}
+  .meal-top h1{text-align:left;margin:0 0 9px;font-size:clamp(32px,4vw,45px);letter-spacing:-2px}
+  .meal-top .sub{text-align:left;margin:0;max-width:570px;font-size:14px}
+  .meal-count{flex:0 0 auto;border:1px solid var(--line);background:white;border-radius:16px;padding:13px 16px;min-width:105px;text-align:center}
+  .meal-count strong{display:block;font-size:23px;letter-spacing:-1px}.meal-count span{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+  .food-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;max-width:1060px;margin:0 auto}
+  .food-card{border:1px solid #e3e9e1;background:white;border-radius:22px;padding:10px;text-align:left;position:relative;transition:transform .22s,border .22s,box-shadow .22s;box-shadow:0 7px 20px #18352d05;min-width:0}
+  .food-card:hover{transform:translateY(-5px);box-shadow:0 16px 35px #18352d12;border-color:#b7d6c4}
+  .food-card.selected{border:2px solid var(--green);padding:9px;box-shadow:0 0 0 4px #26745b13}
+  .food-art{height:145px;border-radius:15px;display:grid;place-items:center;overflow:hidden;position:relative}
+  .food-art:after{content:"";position:absolute;inset:0;background:linear-gradient(140deg,#ffffff25,transparent 55%);pointer-events:none}
+  .food-photo{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+  .food-card:hover .food-photo{transform:scale(1.045)}
+  .food-photo-fallback{font-size:12px;color:#71827b;text-align:center;padding:12px}
+  .check{position:absolute;right:9px;top:9px;width:26px;height:26px;border-radius:50%;background:var(--green);color:white;display:none;place-items:center;font-size:14px;z-index:2}
+  .food-card.selected .check{display:grid}
+  .food-info{padding:14px 7px 9px}
+  .food-name{font-size:15px;font-weight:850;letter-spacing:-.3px;margin-bottom:6px}
+  .food-desc{font-size:11px;color:var(--muted);min-height:17px}
+  .food-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:13px;gap:5px}
+  .calories{font-size:12px;font-weight:850;color:var(--green)}
+  .portion{font-size:10px;color:var(--muted);background:#f2f5ef;border-radius:7px;padding:5px 7px}
+  .meal-actions{max-width:1060px;margin:23px auto 0;display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .selection-note{font-size:12px;color:var(--muted)}
+  .selection-note strong{color:var(--ink)}
+  .result-layout{max-width:980px;margin:0 auto;display:grid;grid-template-columns:.85fr 1.15fr;gap:20px}
+  .result-hero{background:var(--green);border-radius:27px;color:white;padding:31px;position:relative;overflow:hidden;min-height:340px;display:flex;flex-direction:column;justify-content:space-between}
+  .result-hero.unhealthy{background:#9b5638}
+  .result-hero:after{content:"";position:absolute;width:270px;height:270px;border:1px solid #ffffff30;border-radius:50%;right:-130px;bottom:-100px;box-shadow:0 0 0 28px #ffffff08,0 0 0 56px #ffffff06}
+  .result-status{font-size:11px;text-transform:uppercase;letter-spacing:.13em;font-weight:850;color:#d2e8dd}
+  .result-hero h2{font-size:clamp(36px,4vw,49px);line-height:.98;letter-spacing:-2px;margin:19px 0 13px}
+  .result-hero p{font-size:13px;line-height:1.7;color:#dcebe3;max-width:290px}
+  .result-symbol{font-size:67px;align-self:flex-end;position:relative;z-index:1}
+  .result-details{background:white;border:1px solid var(--line);border-radius:27px;padding:27px;box-shadow:var(--shadow)}
+  .result-details h3{margin:0;font-size:19px;letter-spacing:-.5px}
+  .result-details .muted{color:var(--muted);font-size:12px;line-height:1.6;margin:7px 0 20px}
+  .metric{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid #edf0eb}
+  .metric:last-of-type{border-bottom:0}
+  .metric-label{font-size:12px;color:var(--muted)}
+  .metric-value{font-weight:850;font-size:14px}
+  .meal-summary{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0 18px}
+  .meal-chip{font-size:11px;padding:8px 10px;border-radius:10px;background:#f1f5ee;color:var(--ink)}
+  .meal-chip b{color:var(--green)}
+  .disclaimer{font-size:10px;color:var(--muted);line-height:1.55;margin:14px 0 0}
+  .result-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  footer{max-width:1240px;margin:0 auto;padding:0 30px 25px;display:flex;justify-content:space-between;gap:12px;color:#87958e;font-size:10px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);background:#18352d;color:white;padding:12px 17px;border-radius:12px;font-size:12px;opacity:0;pointer-events:none;transition:.25s;z-index:5;box-shadow:var(--shadow)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media(max-width:800px){.layout{grid-template-columns:1fr}.side-card{min-height:250px}.plate-art{font-size:72px;margin:0}.food-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.result-layout{grid-template-columns:1fr}.result-hero{min-height:270px}.meal-top{align-items:flex-start}.meal-count{min-width:85px}}
+  @media(max-width:520px){header{padding:0 18px;height:70px}.main{padding:14px 16px 40px}.header-note{font-size:9px}.progress-wrap{margin-bottom:24px}.intro{margin-bottom:23px}h1{letter-spacing:-1.7px}.panel{padding:22px}.food-grid{gap:10px}.food-art{height:115px}.food-photo{width:100%}.food-info{padding:12px 5px 7px}.food-name{font-size:13px}.food-desc{font-size:10px}.food-bottom{align-items:flex-start;flex-direction:column}.meal-top h1{font-size:33px}.meal-top .sub{font-size:12px}.meal-count{padding:10px;min-width:72px}.meal-count strong{font-size:19px}.meal-actions{align-items:stretch;flex-direction:column-reverse}.meal-actions .btn{width:100%}.selection-note{text-align:center}footer{padding:0 16px 20px;flex-direction:column}.result-details,.result-hero{padding:23px}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+  /* Exhibition layout: keep the app within the browser viewport.
+     Only the food-card grid scrolls; profile and result screens stay fixed. */
+  html, body { width:100%; height:100%; overflow:hidden; }
+  body { min-height:0; }
+  .app { height:100vh; height:100dvh; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  header { flex:0 0 66px; height:66px; }
+  .main { width:100%; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; padding:8px 30px 10px; overflow:hidden; }
+  .progress-wrap { flex:0 0 auto; width:min(780px,100%); margin:0 auto 14px; }
+  .progress-meta { margin-bottom:6px; }
+  .screen { display:none; }
+  .screen.active { display:flex; flex:1 1 auto; min-height:0; flex-direction:column; overflow:hidden; }
+  .intro { flex:0 0 auto; margin:0 auto 16px; }
+  .intro .eyebrow { margin-bottom:10px; padding:6px 10px; }
+  .intro h1 { font-size:clamp(30px,4.2vw,48px); margin-bottom:9px; }
+  .intro .sub { font-size:13px; line-height:1.5; }
+  .layout { width:min(940px,100%); flex:1 1 auto; min-height:0; align-items:stretch; }
+  .panel { padding:22px 26px; }
+  .panel-sub { margin-bottom:15px; }
+  .field { margin-bottom:12px; }
+  .field input { padding:11px 13px; }
+  .side-card { min-height:0; }
+  .plate-art { font-size:76px; margin:4px 0; }
+  .meal-top { flex:0 0 auto; margin:0 auto 12px; width:min(1060px,100%); align-items:center; }
+  .meal-top .eyebrow { margin-bottom:8px; padding:6px 10px; }
+  .meal-top h1 { font-size:clamp(28px,3.5vw,40px); margin-bottom:5px; }
+  .meal-top .sub { font-size:12px; line-height:1.4; }
+  .food-grid { flex:1 1 auto; min-height:0; width:min(1060px,100%); overflow-y:auto; overscroll-behavior:contain; align-content:start; grid-auto-rows:max-content; padding:3px 5px 12px; scrollbar-width:thin; scrollbar-color:#b9cfc1 transparent; }
+  .food-art { height:clamp(92px,14vh,135px); }
+  .food-info { padding:9px 6px 7px; }
+  .food-name { font-size:14px; }
+  .food-bottom { margin-top:8px; }
+  .meal-actions { flex:0 0 auto; width:min(1060px,100%); margin:10px auto 0; padding:8px 0 2px; }
+  .result-layout { width:min(980px,100%); flex:1 1 auto; min-height:0; align-items:stretch; }
+  .result-hero { min-height:0; padding:24px; }
+  .result-details { padding:20px 22px; overflow:auto; }
+  .result-details .muted { margin:5px 0 12px; }
+  .metric { padding:9px 0; }
+  .meal-summary { margin:10px 0 12px; }
+  .disclaimer { margin-top:9px; }
+  .result-actions { margin-top:12px; }
+  footer { flex:0 0 26px; min-height:26px; padding:4px 30px 7px; align-items:center; }
+
+  @media (max-height:760px) {
+    header { flex-basis:56px; height:56px; }
+    .main { padding-top:5px; padding-bottom:5px; }
+    .progress-wrap { margin-bottom:9px; }
+    .intro { margin-bottom:9px; }
+    .intro h1 { font-size:clamp(27px,3.5vw,40px); }
+    .panel { padding:16px 22px; }
+    .field { margin-bottom:8px; }
+    .side-card { padding:20px; }
+    .side-card h2 { font-size:26px; margin:9px 0; }
+    .side-card p { margin:7px 0; }
+    .plate-art { font-size:58px; }
+    .food-grid { gap:10px; }
+    .food-art { height:clamp(78px,12vh,105px); }
+    .food-info { padding:7px 5px 5px; }
+    .food-name { font-size:12px; margin-bottom:3px; }
+    .food-desc { font-size:10px; }
+    .food-bottom { margin-top:5px; }
+    .meal-actions { margin-top:5px; }
+    .result-details { padding:14px 18px; }
+    .result-hero { padding:18px; }
+    .result-hero h2 { font-size:36px; margin:12px 0 8px; }
+    .result-hero p { font-size:12px; line-height:1.5; }
+    .result-symbol { font-size:48px; }
+    footer { flex-basis:22px; min-height:22px; }
+  }
+  @media (max-width:800px) {
+    .layout { grid-template-columns:minmax(0,1fr) minmax(0,.85fr); gap:12px; }
+    .side-card { min-height:0; }
+    .result-layout { grid-template-columns:.8fr 1.2fr; gap:12px; }
+    .result-hero { min-height:0; }
+    .food-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media (max-width:560px) {
+    header { flex-basis:56px; height:56px; padding:0 16px; }
+    .main { padding:6px 14px 6px; }
+    .progress-wrap { margin-bottom:9px; }
+    .header-note { font-size:8px; }
+    .screen#screen-1 .layout { grid-template-columns:1fr; }
+    .screen#screen-1 .side-card { display:none; }
+    .screen#screen-1 .panel { padding:17px 19px; }
+    .screen#screen-1 .intro { margin-bottom:10px; }
+    .screen#screen-1 .intro h1 { font-size:34px; }
+    .meal-top { gap:8px; margin-bottom:8px; }
+    .meal-top h1 { font-size:28px; }
+    .meal-top .sub { font-size:11px; }
+    .meal-count { min-width:68px; padding:8px 9px; }
+    .meal-count strong { font-size:18px; }
+    .meal-count span { font-size:8px; }
+    .food-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .food-art { height:100px; }
+    .food-name { font-size:12px; }
+    .food-desc { font-size:9px; }
+    .food-bottom { flex-direction:row; align-items:center; flex-wrap:wrap; }
+    .calories { font-size:10px; }
+    .portion { font-size:9px; }
+    .meal-actions { gap:7px; flex-direction:row; align-items:center; }
+    .meal-actions .btn { width:auto; padding:10px 11px; font-size:10px; }
+    .selection-note { font-size:9px; text-align:center; }
+    .result-layout { grid-template-columns:1fr; gap:8px; }
+    .result-hero { padding:14px 18px; min-height:0; flex-direction:row; align-items:center; }
+    .result-hero h2 { font-size:28px; margin:8px 0 5px; }
+    .result-hero p { font-size:10px; margin:0; max-width:none; }
+    .result-symbol { font-size:38px; }
+    .result-details { padding:12px 15px; }
+    .result-details h3 { font-size:16px; }
+    .result-details .muted { font-size:10px; margin:3px 0 7px; }
+    .metric { padding:6px 0; }
+    .metric-label,.metric-value { font-size:10px; }
+    .meal-summary { margin:6px 0; gap:5px; }
+    .meal-chip { font-size:9px; padding:6px 7px; }
+    .result-actions { margin-top:7px; }
+    .result-actions .btn { padding:9px 11px; font-size:10px; }
+    .disclaimer { font-size:8px; line-height:1.35; margin-top:6px; }
+    footer { padding:3px 14px 5px; font-size:8px; }
+  }
+
+
+  /* Clean exhibition UI */
+  :root {
+    --ink:#172f28; --muted:#697b73; --green:#18734f; --green2:#e8f4ed;
+    --cream:#f5f7f3; --line:#e3eae4; --shadow:0 12px 34px rgba(22,54,40,.07);
+  }
+  html,body { width:100%; height:100%; overflow:hidden; }
+  body { background:#f4f7f3; }
+  .app { height:100vh; height:100dvh; min-height:0; display:flex; flex-direction:column; overflow:hidden; background:linear-gradient(135deg,#f7f9f6 0%,#eef4ef 100%); }
+  .ambient { display:none; }
+  header { height:62px; flex:0 0 62px; padding:0 34px; border-bottom:1px solid #e6ece7; background:rgba(255,255,255,.84); }
+  .brand { font-size:19px; letter-spacing:-.5px; }
+  .brand-mark { width:34px; height:34px; border-radius:11px; }
+  .header-note { font-size:10px; letter-spacing:.12em; color:#78877f; }
+  .main { width:100%; max-width:1180px; margin:0 auto; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; padding:13px 32px 16px; overflow:hidden; }
+  .progress-wrap { width:min(700px,100%); margin:0 auto 18px; flex:0 0 auto; }
+  .progress-meta { font-size:11px; margin-bottom:7px; }
+  .progress-track { height:4px; background:#e4ebe5; }
+  .progress-fill { background:#18734f; }
+  .screen { display:none; }
+  .screen.active { display:flex; flex:1 1 auto; min-height:0; flex-direction:column; overflow:hidden; }
+  .intro { max-width:620px; margin:0 auto 18px; flex:0 0 auto; }
+  .eyebrow { font-size:9px; padding:6px 10px; margin-bottom:10px; letter-spacing:.1em; }
+  h1 { font-size:clamp(31px,4vw,47px); letter-spacing:-1.9px; line-height:1.03; margin:0 auto 9px; }
+  .sub { font-size:13px; line-height:1.55; max-width:550px; }
+  .layout { display:flex; justify-content:center; width:100%; max-width:620px; flex:1 1 auto; min-height:0; margin:0 auto; }
+  .panel { width:100%; max-width:560px; padding:24px 30px; border:1px solid #e4ebe5; border-radius:20px; box-shadow:var(--shadow); background:#fff; }
+  .panel-title { font-size:17px; }
+  .panel-sub { font-size:12px; margin-bottom:16px; }
+  .field { margin-bottom:13px; }
+  .field label { font-size:11px; margin-bottom:6px; }
+  .field input { padding:12px 13px; border-radius:10px; background:#fbfcfb; font-size:13px; }
+  .input-hint { font-size:10px; }
+  .btn { border-radius:10px; padding:12px 17px; font-size:12px; }
+  .btn-primary { background:#18734f; box-shadow:0 6px 16px rgba(24,115,79,.16); }
+  .btn-primary:hover { background:#125d40; }
+  .btn-light { background:#f0f4f0; border:1px solid #e2e9e3; }
+  .meal-top { width:100%; max-width:1040px; margin:0 auto 13px; flex:0 0 auto; align-items:center; }
+  .meal-top .eyebrow { margin-bottom:7px; }
+  .meal-top h1 { font-size:clamp(29px,3.5vw,40px); margin:0 0 5px; }
+  .meal-top .sub { font-size:12px; }
+  .meal-count { min-width:90px; padding:10px 12px; border:1px solid #e2e9e3; border-radius:12px; box-shadow:none; }
+  .meal-count strong { font-size:21px; }
+  .meal-count span { font-size:9px; }
+  .food-grid { width:100%; max-width:1040px; flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; align-content:start; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; padding:2px 4px 12px; scrollbar-width:thin; scrollbar-color:#bdcec2 transparent; }
+  .food-card { border:1px solid #e4eae5; border-radius:15px; padding:8px; box-shadow:0 3px 12px rgba(22,54,40,.035); }
+  .food-card:hover { transform:translateY(-2px); box-shadow:0 9px 20px rgba(22,54,40,.08); }
+  .food-card.selected { border:2px solid #18734f; padding:7px; box-shadow:0 0 0 3px rgba(24,115,79,.08); }
+  .food-art { height:clamp(95px,14vh,135px); border-radius:10px; }
+  .food-info { padding:10px 5px 5px; }
+  .food-name { font-size:13px; margin-bottom:4px; }
+  .food-desc { font-size:10px; }
+  .food-bottom { margin-top:8px; }
+  .calories { font-size:11px; }
+  .portion { font-size:9px; }
+  .meal-actions { width:100%; max-width:1040px; flex:0 0 auto; margin:11px auto 0; padding-top:9px; border-top:1px solid #e5ebe6; }
+  .selection-note { font-size:11px; }
+  .result-layout { width:100%; max-width:900px; flex:1 1 auto; min-height:0; margin:auto; grid-template-columns:.85fr 1.15fr; gap:16px; }
+  .result-hero { min-height:0; padding:25px; border-radius:20px; }
+  .result-hero h2 { font-size:clamp(34px,4vw,46px); }
+  .result-hero p { font-size:12px; line-height:1.6; }
+  .result-symbol { font-size:54px; }
+  .result-details { padding:20px 23px; border-radius:20px; overflow:auto; }
+  .result-details h3 { font-size:17px; }
+  .result-details .muted { font-size:11px; margin:5px 0 12px; }
+  .metric { padding:9px 0; }
+  .metric-label { font-size:11px; }
+  .metric-value { font-size:12px; }
+  .meal-summary { margin:10px 0 12px; gap:6px; }
+  .meal-chip { font-size:10px; padding:7px 8px; }
+  .result-actions { margin-top:10px; }
+  .disclaimer { font-size:9px; line-height:1.4; margin-top:9px; }
+  footer { display:none; }
+  .toast { bottom:16px; }
+  @media(max-height:720px) {
+    header { height:54px; flex-basis:54px; }
+    .main { padding-top:8px; padding-bottom:8px; }
+    .progress-wrap { margin-bottom:10px; }
+    .intro { margin-bottom:10px; }
+    .intro h1 { font-size:34px; }
+    .panel { padding:17px 24px; }
+    .panel-sub { margin-bottom:10px; }
+    .field { margin-bottom:8px; }
+    .field input { padding:10px 12px; }
+    .food-grid { gap:9px; }
+    .food-art { height:90px; }
+    .food-info { padding:7px 4px 3px; }
+    .food-name { font-size:12px; }
+    .food-bottom { margin-top:5px; }
+    .result-details { padding:14px 18px; }
+    .metric { padding:6px 0; }
+    .disclaimer { font-size:8px; }
+  }
+  @media(max-width:760px) {
+    header { padding:0 18px; }
+    .main { padding:10px 16px 12px; }
+    .layout { max-width:560px; }
+    .food-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .result-layout { grid-template-columns:.8fr 1.2fr; gap:10px; }
+    .result-details { padding:15px; }
+  }
+  @media(max-width:540px) {
+    header { height:54px; flex-basis:54px; }
+    .header-note { font-size:8px; }
+    .main { padding:8px 12px 9px; }
+    .progress-wrap { margin-bottom:10px; }
+    .intro { margin-bottom:10px; }
+    .intro h1 { font-size:34px; }
+    .intro .sub { font-size:11px; }
+    .panel { padding:16px 18px; }
+    .meal-top { gap:8px; margin-bottom:8px; }
+    .meal-top h1 { font-size:27px; }
+    .meal-top .sub { font-size:10px; }
+    .meal-count { min-width:64px; padding:8px; }
+    .meal-count strong { font-size:18px; }
+    .meal-count span { font-size:8px; }
+    .food-grid { gap:8px; }
+    .food-art { height:92px; }
+    .food-name { font-size:11px; }
+    .food-desc { font-size:9px; }
+    .food-bottom { flex-wrap:wrap; gap:4px; }
+    .meal-actions { gap:6px; }
+    .meal-actions .btn { padding:9px 10px; font-size:10px; }
+    .selection-note { font-size:9px; text-align:center; }
+    .result-layout { grid-template-columns:1fr; gap:8px; }
+    .result-hero { padding:12px 16px; flex-direction:row; align-items:center; }
+    .result-hero h2 { font-size:26px; margin:7px 0 4px; }
+    .result-hero p { font-size:9px; margin:0; }
+    .result-symbol { font-size:34px; }
+    .result-details { padding:11px 14px; }
+    .result-details .muted { font-size:9px; margin:3px 0 6px; }
+    .metric { padding:5px 0; }
+    .metric-label,.metric-value { font-size:9px; }
+    .meal-chip { font-size:8px; padding:5px 6px; }
+    .result-actions .btn { padding:8px 10px; font-size:9px; }
+    .disclaimer { font-size:7px; }
+  }
+
+
+  /* Full-width header: brand on the left, section label on the right */
+  header {
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:0 clamp(20px, 4vw, 56px);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-sizing:border-box;
+  }
+  .brand { flex:0 0 auto; }
+  .header-note { margin-left:auto; text-align:right; }
+  @media(max-width:540px) {
+    header { padding:0 16px; }
+  }
+
+  .report-heading { color:var(--ink); }
+  #result-name-heading { color:var(--green); }
+  .profile-form-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+  .screen#screen-1 .layout{flex:0 0 auto;min-height:auto}
+  .screen#screen-1 .panel{padding:28px 34px}
+  .profile-form-grid .field-wide{grid-column:1/-1}
+  .profile-form-grid .field{margin-bottom:10px}
+  .profile-form-grid .field input,.profile-form-grid .field select{display:block;width:100%;box-sizing:border-box;min-height:46px;padding:12px 15px;border:1px solid #dfe7e1;border-radius:10px;background:#fbfcfb;color:var(--ink);font:inherit;font-size:13px}
+  .profile-form-grid .field select{appearance:auto}
+  @media(max-width:540px){.screen#screen-1 .panel{padding:20px 22px}.profile-form-grid .field{margin-bottom:8px}.profile-form-grid .field input,.profile-form-grid .field select{min-height:42px;padding:11px 13px;font-size:12px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4c-7 0-12 2-14 7-1 3 1 6 4 6 5 0 8-6 10-13Z"/><path d="M4 21c2-6 6-9 11-12"/></svg></span>nutripath<span style="color:var(--green);font-size:11px;margin-left:-7px">●</span></div>
+    <div class="header-note">DAILY NUTRITION CHECK</div>
+  </header>
+  <main class="main">
+    <div class="progress-wrap" aria-label="Progress">
+      <div class="progress-meta"><span id="step-label">STEP 01 / 05</span><span id="step-name">Your profile</span></div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <section class="screen active" id="screen-1">
+      <div class="intro">
+        <!-- <div class="eyebrow"><i></i> Small choices. Better habits.</div> -->
+        <h1>Eat well.<br><span class="accent">Feel your best.</span></h1>
+        <p class="sub">Enter your details, choose one meal for each part of the day, and see how healthy your selections are.</p>
+      </div>
+      <div class="layout">
+        <div class="panel">
+          <h2 class="panel-title">Your details</h2>
+          <p class="panel-sub">Add your details to get started with your meal check.</p>
+          <form id="profile-form" class="profile-form-grid">
+            <div class="field field-wide"><label for="name">Your name</label><input id="name" name="name" placeholder="e.g. Alex Morgan" autocomplete="name" required maxlength="60"></div>
+            <div class="field"><label for="age">Age (years)</label><input id="age" name="age" type="number" placeholder="e.g. 25" min="18" max="100" step="1" required></div>
+            <div class="field"><label for="weight">Weight (kg)</label><input id="weight" name="weight" type="number" placeholder="e.g. 70" min="30" max="300" step="0.1" required></div>
+            <button class="btn btn-primary btn-full field-wide" type="submit">Continue <span>→</span></button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-2">
+      <div class="meal-top"><div><div class="eyebrow"><i></i> Meal 01 · Morning</div><h1>Breakfast <span class="accent">first.</span></h1><p class="sub">Choose one option that would make a great start to your day.</p></div><div class="meal-count"><strong>01<span style="color:#a7b5ad">/03</span></strong><span>Meals selected</span></div></div>
+      <div class="food-grid" id="breakfast-list"></div>
+      <div class="meal-actions"><button class="btn btn-light" onclick="goTo(1)">← Back to profile</button><div class="selection-note" id="breakfast-note">Choose <strong>1 breakfast</strong> to continue</div><button class="btn btn-primary" onclick="continueMeal('breakfast',3)">Continue to lunch <span>→</span></button></div>
+    </section>
+
+    <section class="screen" id="screen-3">
+      <div class="meal-top"><div><div class="eyebrow"><i></i> Meal 02 · Midday</div><h1>Make lunch <span class="accent">count.</span></h1><p class="sub">Pick one lunch option. Calories are approximate for the serving shown.</p></div><div class="meal-count"><strong>02<span style="color:#a7b5ad">/03</span></strong><span>Meals selected</span></div></div>
+      <div class="food-grid" id="lunch-list"></div>
+      <div class="meal-actions"><button class="btn btn-light" onclick="goTo(2)">← Back to breakfast</button><div class="selection-note" id="lunch-note">Choose <strong>1 lunch</strong> to continue</div><button class="btn btn-primary" onclick="continueMeal('lunch',4)">Continue to dinner <span>→</span></button></div>
+    </section>
+
+    <section class="screen" id="screen-4">
+      <div class="meal-top"><div><div class="eyebrow"><i></i> Meal 03 · Evening</div><h1>Finish <span class="accent">strong.</span></h1><p class="sub">Choose your dinner, then see your healthy food check.</p></div><div class="meal-count"><strong>03<span style="color:#a7b5ad">/03</span></strong><span>Meals selected</span></div></div>
+      <div class="food-grid" id="dinner-list"></div>
+      <div class="meal-actions"><button class="btn btn-light" onclick="goTo(3)">← Back to lunch</button><div class="selection-note" id="dinner-note">Choose <strong>1 dinner</strong> to see your result</div><button class="btn btn-primary" onclick="showResult()">See my result <span>→</span></button></div>
+    </section>
+
+    <section class="screen" id="screen-5">
+      <div class="intro" style="margin-bottom:25px"><h1><span class="accent" id="result-name-heading">Hi there,</span><br><span class="report-heading">Here's your report</span></h1></div>
+      <div class="result-layout">
+        <div class="result-hero" id="result-hero"><div><div class="result-status">YOUR PLATE CHECK</div><h2 id="result-title">Healthy</h2><p id="result-copy">All three of your selected foods are healthy.</p></div><div class="result-symbol" id="result-symbol">🌿</div></div>
+        <div class="result-details">
+          <h3>Your meal choices</h3><p class="muted" id="result-summary-copy">Your selection includes 3 healthy foods and 0 unhealthy foods.</p>
+          <div class="metric"><span class="metric-label">Healthy foods</span><span class="metric-value" id="healthy-count">3</span></div>
+          <div class="metric"><span class="metric-label">Unhealthy foods</span><span class="metric-value" id="unhealthy-count">0</span></div>
+          <div class="metric"><span class="metric-label">Your age</span><span class="metric-value" id="result-age">—</span></div>
+          <div class="metric"><span class="metric-label">Your weight</span><span class="metric-value" id="result-weight">—</span></div>
+          <div class="meal-summary" id="meal-summary"></div>
+          <div class="result-actions"><button class="btn btn-primary" onclick="restart()">Start again ↻</button></div>
+          <p class="disclaimer">Your result is based on the healthy or unhealthy category assigned to each selected food. It is a simple food-choice check, not a medical assessment.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+<script>
+/*
+  EDITABLE FOOD DATA:
+  Each meal is an array of food objects. Update name, calories, serving, image path, and background.
+  Place each food photo in the images/ folder using the filename in its image field. Relative paths work offline.
+*/
+const FOOD_OPTIONS = {
+  healthy: [
+    // BREAKFAST
+    { id: "upma", meal: "breakfast", name: "Vegetable upma", calories: 250, serving: "1 medium bowl", emoji: "🍲", description: "Semolina with vegetables", image: "images/upma.jpg" },
+    { id: "puttu", meal: "breakfast", name: "Puttu & kadala curry", calories: 400, serving: "1 puttu + 1 cup curry", emoji: "🥥", description: "Steamed puttu with black chickpeas", image: "images/puttu-kadala.jpg" },
+    { id: "idli", meal: "breakfast", name: "Idli & sambar", calories: 280, serving: "3 idli + sambar", emoji: "🍘", description: "Steamed rice cakes with lentil sambar", image: "images/idli-sambar.jpg" },
+    { id: "appam", meal: "breakfast", name: "Appam & vegetable stew", calories: 350, serving: "2 appam + 1 cup stew", emoji: "🥞", description: "Soft appam with vegetable stew", image: "images/appam-vegetable-stew.jpg" },
+    { id: "dosa", meal: "breakfast", name: "Dosa & sambar", calories: 300, serving: "2 medium dosa + sambar", emoji: "🥞", description: "Dosa with lentil sambar", image: "images/dosa-sambar.jpg" },
+    { id: "kanji", meal: "breakfast", name: "Kanji & payar", calories: 350, serving: "1 bowl kanji + 1/2 cup payar", emoji: "🥣", description: "Rice porridge with green gram", image: "images/kanji-payar.jpg" },
+    { id: "wheat-dosa", meal: "breakfast", name: "Wheat dosa & sambar", calories: 280, serving: "2 medium dosa + sambar", emoji: "🫓", description: "Whole-wheat dosa with sambar", image: "images/wheat-dosa.jpg" },
+    { id: "idiyappam", meal: "breakfast", name: "Idiyappam & egg curry", calories: 400, serving: "3 idiyappam + 1 egg curry", emoji: "🍜", description: "String hoppers with egg curry", image: "images/idiyappam-egg-curry.jpg" },
+    { id: "chapathi-egg", meal: "breakfast", name: "Chapathi & egg curry", calories: 420, serving: "2 chapathi + egg curry", emoji: "🫓", description: "Whole-wheat chapathi with egg curry", image: "images/chapathi-egg-curry.jpg" },
+    { id: "pathiri", meal: "breakfast", name: "Pathiri & coconut milk", calories: 400, serving: "3 pathiri + coconut milk", emoji: "🥥", description: "Traditional Kerala rice pathiri", image: "images/pathiri-coconut-milk.jpg" },
+
+    // LUNCH
+    { id: "matta-rice", meal: "lunch", name: "Kerala matta rice & fish curry", calories: 550, serving: "1 plate", emoji: "🍛", description: "Matta rice, sambar, thoran and fish curry", image: "images/matta-rice-sambar.jpg" },
+    { id: "moru-avial", meal: "lunch", name: "Rice, moru curry & avial", calories: 450, serving: "1 plate", emoji: "🥗", description: "Rice with buttermilk curry and mixed vegetables", image: "images/rice-moru-avial.jpg" },
+    { id: "parippu-rice", meal: "lunch", name: "Rice & parippu curry", calories: 480, serving: "1 plate", emoji: "🍛", description: "Rice, lentil curry, vegetables and little ghee", image: "images/rice-parippu.jpg" },
+    { id: "rasam-rice", meal: "lunch", name: "Rice, rasam & vegetables", calories: 400, serving: "1 plate", emoji: "🥣", description: "Rice with rasam and vegetable stir-fry", image: "images/rice-rasam.jpg" },
+    { id: "fish-rice", meal: "lunch", name: "Rice & fish curry", calories: 520, serving: "1 plate", emoji: "🐟", description: "Fish curry with rice and steamed vegetables", image: "images/fish-curry-rice.jpg" },
+    { id: "pulissery", meal: "lunch", name: "Rice, pulissery & cabbage thoran", calories: 450, serving: "1 plate", emoji: "🥬", description: "Rice with yogurt curry and cabbage thoran", image: "images/rice-pulissery.jpg" },
+    { id: "kanji-payar", meal: "lunch", name: "Kanji, payar & chammanthi", calories: 380, serving: "1 bowl", emoji: "🥣", description: "Rice porridge with green gram and chutney", image: "images/kanji-payar-chammanthi.jpg" },
+    { id: "chapati-vegetable", meal: "lunch", name: "Chapati & vegetable curry", calories: 380, serving: "3 chapati + 1 cup curry", emoji: "🫓", description: "Whole-wheat chapati with vegetable curry", image: "images/chapati-vegetable-curry.jpg" },
+    { id: "curd-rice", meal: "lunch", name: "Curd rice with vegetables", calories: 400, serving: "1 medium bowl", emoji: "🥣", description: "Rice mixed with curd and vegetables", image: "images/curd-rice.jpg" },
+
+    // DINNER
+    { id: "chapati-veg-dinner", meal: "dinner", name: "Chapati & vegetable curry", calories: 380, serving: "2 chapati + 1 cup curry", emoji: "🫓", description: "Whole-wheat chapati with vegetables", image: "images/chapati-vegetable-curry.jpg" },
+    { id: "idiyappam-stew", meal: "dinner", name: "Idiyappam & vegetable stew", calories: 350, serving: "3 idiyappam + 1 cup stew", emoji: "🍜", description: "Steamed string hoppers with vegetable stew", image: "images/idiyappam-stew.jpg" },
+    { id: "dosa-sambar-dinner", meal: "dinner", name: "Dosa & sambar", calories: 300, serving: "2 medium dosa + sambar", emoji: "🥞", description: "Dosa with lentil sambar", image: "images/dosa-sambar.jpg" },
+    { id: "kanji-dinner", meal: "dinner", name: "Kanji, payar & chammanthi", calories: 380, serving: "1 bowl", emoji: "🥣", description: "Rice porridge with green gram and chutney", image: "images/kanji-payar-chammanthi.jpg" },
+    { id: "appam-stew", meal: "dinner", name: "Appam & vegetable stew", calories: 350, serving: "2 appam + 1 cup stew", emoji: "🥥", description: "Soft appam with vegetable stew", image: "images/appam-vegetable-stew.jpg" },
+    { id: "soup-toast", meal: "dinner", name: "Vegetable soup & whole-grain bread", calories: 300, serving: "1 bowl + 2 bread slices", emoji: "🍲", description: "Vegetable soup with whole-grain toast", image: "images/soup-toast.jpg" },
+    { id: "fish-vegetables", meal: "dinner", name: "Rice, fish curry & vegetables", calories: 430, serving: "1 plate", emoji: "🐟", description: "Fish curry with moderate rice and vegetables", image: "images/fish-vegetables.jpg" },
+    { id: "idli-dinner", meal: "dinner", name: "Idli & sambar", calories: 280, serving: "3 idli + sambar", emoji: "🍘", description: "Steamed idli with lentil sambar", image: "images/idli-sambar.jpg" },
+    { id: "chapati-egg-dinner", meal: "dinner", name: "Chapati & egg curry", calories: 420, serving: "2 chapati + egg curry", emoji: "🍳", description: "Chapati with protein-rich egg curry", image: "images/chapati-egg-curry.jpg" },
+    { id: "oats", meal: "dinner", name: "Oats", calories: 250, serving: "1 medium bowl", emoji: "🥣", description: "Oats prepared with milk or water", image: "images/oats.jpg" }
+  ],
+
+  unhealthy: [
+    // BREAKFAST
+    { id: "poori", meal: "breakfast", name: "Poori & potato masala", calories: 500, serving: "2 poori + potato masala", emoji: "🫓", description: "Deep-fried poori with potato masala", image: "images/poori-potato-masala.jpg" },
+    { id: "pazhampori", meal: "breakfast", name: "Pazhampori", calories: 250, serving: "2 pieces", emoji: "🍌", description: "Deep-fried banana fritters", image: "images/pazhampori.jpg" },
+    { id: "bread-omelette", meal: "breakfast", name: "Bread & omelette / jam", calories: 350, serving: "2 bread slices + omelette", emoji: "🍳", description: "Bread with omelette or sweet jam", image: "images/bread-omelette.jpg" },
+    { id: "porotta", meal: "breakfast", name: "Porotta & curry", calories: 550, serving: "2 porotta + curry", emoji: "🫓", description: "Layered Kerala porotta with curry", image: "images/porotta-curry.jpg" },
+    { id: "noodles", meal: "breakfast", name: "Noodles", calories: 400, serving: "1 medium plate", emoji: "🍜", description: "Prepared noodles with seasoning", image: "images/noodles.jpg" },
+    { id: "pasta", meal: "breakfast", name: "Pasta", calories: 450, serving: "1 medium bowl", emoji: "🍝", description: "Pasta with sauce", image: "images/pasta.jpg" },
+    { id: "fried-chips", meal: "breakfast", name: "Fried chips", calories: 300, serving: "50g", emoji: "🍟", description: "Deep-fried potato chips", image: "images/fried-chips.jpg" },
+    { id: "tea-biscuits", meal: "breakfast", name: "Sugary tea & biscuits", calories: 220, serving: "1 cup tea + 3 biscuits", emoji: "☕", description: "Sweetened tea with biscuits", image: "images/tea-biscuits.jpg" },
+    { id: "vada", meal: "breakfast", name: "Vada & coconut chutney", calories: 350, serving: "2 vada + chutney", emoji: "🍩", description: "Deep-fried vada with chutney", image: "images/vada-chutney.jpg" },
+    { id: "ghee-roast", meal: "breakfast", name: "Ghee roast", calories: 450, serving: "1 large dosa", emoji: "🥞", description: "Dosa prepared with generous ghee", image: "images/ghee-roast.jpg" },
+
+    // LUNCH
+    { id: "biryani", meal: "lunch", name: "Chicken biriyani", calories: 750, serving: "1 large plate", emoji: "🍗", description: "Large biriyani portion with excess oil and ghee", image: "images/chicken-biryani.jpg" },
+    { id: "ghee-rice", meal: "lunch", name: "Ghee rice & chicken curry", calories: 700, serving: "1 plate", emoji: "🍛", description: "Ghee rice with rich chicken curry", image: "images/ghee-rice-chicken.jpg" },
+    { id: "fried-fish-rice", meal: "lunch", name: "Rice & fried fish", calories: 650, serving: "1 plate", emoji: "🐟", description: "Rice with deep-fried fish and oily curry", image: "images/fried-fish-rice.jpg" },
+    { id: "porotta-beef", meal: "lunch", name: "Porotta & beef fry", calories: 800, serving: "2 porotta + beef fry", emoji: "🥩", description: "Layered porotta with oily beef fry", image: "images/porotta-beef-fry.jpg" },
+    { id: "fried-rice", meal: "lunch", name: "Fried rice & chilli chicken", calories: 750, serving: "1 plate", emoji: "🍚", description: "Oil-rich fried rice with chilli chicken", image: "images/fried-rice-chilli-chicken.jpg" },
+    { id: "heavy-meals", meal: "lunch", name: "Heavy rice meals", calories: 750, serving: "1 large plate", emoji: "🍱", description: "Excess rice with pappadam and pickle", image: "images/kerala-meals-pappadam.jpg" },
+    { id: "creamy-chicken", meal: "lunch", name: "Chapati & creamy chicken curry", calories: 650, serving: "2 chapati + rich curry", emoji: "🍛", description: "Chapati with creamy, oily chicken curry", image: "images/chapati-creamy-chicken.jpg" },
+    { id: "fried-sides", meal: "lunch", name: "Rice with fried side dishes", calories: 700, serving: "1 plate", emoji: "🍟", description: "Rice with frequent deep-fried accompaniments", image: "images/rice-fried-sides.jpg" },
+
+    // DINNER
+    { id: "porotta-beef-dinner", meal: "dinner", name: "Porotta & beef fry", calories: 800, serving: "2 porotta + beef fry", emoji: "🥩", description: "Layered porotta with oily beef fry", image: "images/porotta-beef-fry.jpg" },
+    { id: "fried-rice-dinner", meal: "dinner", name: "Fried rice & chilli chicken", calories: 750, serving: "1 plate", emoji: "🍚", description: "Oil-rich fried rice with chilli chicken", image: "images/fried-rice-chilli-chicken.jpg" },
+    { id: "biryani-dinner", meal: "dinner", name: "Chicken biriyani", calories: 750, serving: "1 large plate", emoji: "🍗", description: "Chicken biriyani prepared with excess oil", image: "images/chicken-biryani.jpg" },
+    { id: "appam-chicken", meal: "dinner", name: "Appam & rich chicken curry", calories: 600, serving: "2 appam + 1 cup curry", emoji: "🍛", description: "Appam with rich, creamy chicken curry", image: "images/appam-rich-chicken-curry.jpg" },
+    { id: "maggi", meal: "dinner", name: "Instant noodles (Maggi)", calories: 350, serving: "1 standard packet", emoji: "🍜", description: "Instant noodles with seasoning", image: "images/maggi-noodles.jpg" },
+    { id: "fried-snacks-tea", meal: "dinner", name: "Fried snacks & sweetened tea", calories: 400, serving: "2 snacks + 1 cup tea", emoji: "☕", description: "Deep-fried snacks with sugary tea", image: "images/fried-snacks-tea.jpg" },
+    { id: "pizza", meal: "dinner", name: "Extra cheese pizza", calories: 650, serving: "2 medium slices", emoji: "🍕", description: "Pizza loaded with extra cheese", image: "images/cheese-pizza.jpg" },
+    { id: "burger-fries", meal: "dinner", name: "Burger & French fries", calories: 750, serving: "1 burger + small fries", emoji: "🍔", description: "Burger served with fried potatoes", image: "images/burger-fries.jpg" },
+    { id: "rice-oily-curry", meal: "dinner", name: "Large rice portion & oily curry", calories: 700, serving: "1 large plate", emoji: "🍛", description: "Excess rice with oil-rich curries", image: "images/rice-oily-curry.jpg" },
+    { id: "bread-jam", meal: "dinner", name: "Bread with jam or chocolate spread", calories: 350, serving: "3 bread slices + spread", emoji: "🍞", description: "Refined bread with sugary spreads", image: "images/bread-jam.jpg" }
+  ]
+};
+
+const state = {profile:null, selected:{breakfast:null,lunch:null,dinner:null}, foodOrders:{}};
+const screenNames = ["Your profile","Choose breakfast","Choose lunch","Choose dinner","Your result"];
+function goTo(step){
+  document.querySelectorAll(".screen").forEach((el,i)=>el.classList.toggle("active",i===step-1));
+  document.getElementById("progress-fill").style.width=(step*20)+"%";
+  document.getElementById("step-label").textContent=`STEP ${String(step).padStart(2,"0")} / 05`;
+  document.getElementById("step-name").textContent=screenNames[step-1];
+  const activeGrid=document.querySelector(".screen.active .food-grid"); if(activeGrid) activeGrid.scrollTop=0;
+}
+function renderFoodList(meal){
+  const root=document.getElementById(meal+"-list");
+  if(!state.foodOrders[meal]){
+    const foods=[...FOOD_OPTIONS.healthy,...FOOD_OPTIONS.unhealthy].filter(food=>food.meal===meal);
+    for(let i=foods.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [foods[i],foods[j]]=[foods[j],foods[i]];
+    }
+    state.foodOrders[meal]=foods;
+  }
+  const foods=state.foodOrders[meal];
+  root.innerHTML=foods.map(food=>`
+    <button type="button" class="food-card ${state.selected[meal]?.id===food.id?"selected":""}" data-meal="${meal}" data-id="${food.id}" aria-pressed="${state.selected[meal]?.id===food.id}" aria-label="Select ${food.name}, approximately ${food.calories} calories">
+      <div class="food-art" style="background:${food.background}"><img class="food-photo" src="${food.image}" alt="${food.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="food-photo-fallback" style="display:none">Add photo:<br>${food.image}</span><span class="check">✓</span></div>
+      <div class="food-info"><div class="food-name">${food.name}</div><div class="food-desc">${food.description}</div><div class="food-bottom"><span class="calories">≈ ${food.calories} kcal</span><span class="portion">${food.serving}</span></div></div>
+    </button>`).join("");
+  root.querySelectorAll(".food-card").forEach(card=>card.addEventListener("click",()=>{
+    const food=foods.find(item=>item.id===card.dataset.id);
+    state.selected[meal]=food;
+    renderFoodList(meal);
+    document.getElementById(meal+"-note").innerHTML=`Selected: <strong>${food.name}</strong> · ${food.calories} kcal`;
+  }));
+}
+function continueMeal(meal,next){
+  if(!state.selected[meal]){showToast("Choose one food option to continue.");return;}
+  goTo(next);
+}
+document.getElementById("profile-form").addEventListener("submit",event=>{
+  event.preventDefault();
+  const name=document.getElementById("name").value.trim();
+  const age=Number(document.getElementById("age").value);
+  const weight=Number(document.getElementById("weight").value);
+  if(!name||!Number.isInteger(age)||age<18||age>100||!Number.isFinite(weight)||weight<30||weight>300){
+    showToast("Please enter your name, age (18–100), and weight (30–300 kg).");return;
+  }
+  state.profile={name,age,weight};
+  ["breakfast","lunch","dinner"].forEach(renderFoodList);
+  goTo(2);
+});
+function showResult(){
+  if(!state.selected.dinner){showToast("Choose one dinner option to see your result.");return;}
+
+  const selectedFoods=Object.values(state.selected);
+  const healthyCount=selectedFoods.filter(food=>FOOD_OPTIONS.healthy.includes(food)).length;
+  const unhealthyCount=selectedFoods.length-healthyCount;
+  const isHealthy=healthyCount>=2;
+  const p=state.profile;
+
+  document.getElementById("result-name-heading").textContent=`Hi ${p.name.split(/\s+/)[0]},`;
+  document.getElementById("healthy-count").textContent=healthyCount;
+  document.getElementById("unhealthy-count").textContent=unhealthyCount;
+  document.getElementById("result-age").textContent=`${p.age} years`;
+  document.getElementById("result-weight").textContent=`${p.weight} kg`;
+  document.getElementById("result-summary-copy").textContent=`Your selection includes ${healthyCount} healthy ${healthyCount===1?"food":"foods"} and ${unhealthyCount} unhealthy ${unhealthyCount===1?"food":"foods"}.`;
+
+  const hero=document.getElementById("result-hero");
+  hero.classList.toggle("unhealthy",!isHealthy);
+  document.getElementById("result-title").textContent=isHealthy?"Healthy":"Unhealthy";
+  document.getElementById("result-copy").textContent=isHealthy
+    ? `${healthyCount} of your three selected foods are healthy.`
+    : `${unhealthyCount} of your three selected foods ${unhealthyCount===1?"is":"are"} unhealthy.`;
+  document.getElementById("result-symbol").textContent=isHealthy?"🌿":"⚠️";
+  document.getElementById("meal-summary").innerHTML=["breakfast","lunch","dinner"].map(meal=>{
+    const food=state.selected[meal];
+    const category=FOOD_OPTIONS.healthy.includes(food)?"Healthy":"Unhealthy";
+    return `<span class="meal-chip">${meal[0].toUpperCase()+meal.slice(1)}: ${food.name} · <b>${category}</b></span>`;
+  }).join("");
+  goTo(5);
+}
+function restart(){
+  state.profile=null;state.selected={breakfast:null,lunch:null,dinner:null};
+  state.foodOrders={};
+  document.getElementById("profile-form").reset();
+  ["breakfast","lunch","dinner"].forEach(meal=>document.getElementById(meal+"-note").innerHTML=`Choose <strong>1 ${meal}</strong> to continue`);
+  goTo(1);
+}
+let toastTimer;
+function showToast(message){
+  const toast=document.getElementById("toast");toast.textContent=message;toast.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),2400);
+}
+</script>
+</body>
+</html>
